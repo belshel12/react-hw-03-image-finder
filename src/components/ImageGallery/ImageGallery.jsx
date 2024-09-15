@@ -1,4 +1,4 @@
-import { Component } from "react";
+import { useEffect, useState } from "react";
 import ImageGalleryItem from "../ImageGalleryItem/ImageGalleryItem";
 import getApi from "../../services/getApi";
 import Button from "../Button/Button";
@@ -6,77 +6,73 @@ import Loader from "../Loader/Loader";
 import toast from "react-hot-toast";
 import { ImageGallaryList, GalleryItem } from "./ImageGallery.styled";
 
-class ImageGallery extends Component {
-  state = {
-    images: [],
-    query: "",
-    page: 1,
-    totalImages: 0,
-    loading: false,
-  };
+const ImageGallery = ({ queryText }) => {
+  const [images, setImages] = useState([]);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalImages, setTotalImages] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  async componentDidUpdate(prevProps, prevState) {
-    const { queryText } = this.props;
-    const { page, query } = this.state;
-
-    prevProps.queryText !== queryText && this.setState({ query: queryText });
-
-    prevState.query !== query && this.setState({ page: 1, images: [] });
-
-    if (
-      (query !== prevState.query && page === 1) ||
-      (page !== prevState.page && query === prevState.query)
-    ) {
-      try {
-        this.setState({ loading: true });
-        const response = await getApi(query, page);
-        this.setState({
-          loading: false,
-          totalImages: response.totalHits,
-        });
-
-        if (response.hits.length) {
-          this.setState((prev) => ({
-            images: [...prev.images, ...response.hits],
-          }));
-        } else {
-          toast("Nothing was found for this query");
-          this.setState({ images: [], page: 1 });
-        }
-      } catch (error) {
-        toast.error(error.message);
-        this.setState({ images: [], page: 1, loading: false });
-        return;
-      }
+  useEffect(() => {
+    if (!queryText) {
+      return;
     }
-  }
+    setQuery(queryText);
+    setImages([]);
+    setPage(1);
+  }, [queryText]);
 
-  handleLoadMore = () => this.setState((prev) => ({ page: prev.page + 1 }));
+  useEffect(() => {
+    if (query !== "") {
+      setLoading(true);
 
-  render() {
-    const { images, loading, totalImages } = this.state;
-    return (
-      <>
-        {loading && <Loader />}
+      getApi(query, page)
+        .then((data) => {
+          setTotalImages(data.totalHits);
 
-        <ImageGallaryList>
-          {images.map(({ id, webformatURL, largeImageURL, tags }) => (
-            <GalleryItem key={id}>
-              <ImageGalleryItem
-                largeUrl={largeImageURL}
-                imgUrl={webformatURL}
-                alt={tags}
-              />
-            </GalleryItem>
-          ))}
-        </ImageGallaryList>
+          if (data.hits.length) {
+            setImages((prev) => {
+              return [...prev, ...data.hits];
+            });
+          } else {
+            toast("Nothing was found for this query");
+            setImages([]);
+            setPage(1);
+          }
+        })
+        .catch((error) => {
+          toast.error(error.message);
+          setImages([]);
+          setPage(1);
+          return;
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [query, page]);
 
-        {images.length > 0 && images.length < totalImages && (
-          <Button onLoadMore={this.handleLoadMore} />
-        )}
-      </>
-    );
-  }
-}
+  const handleLoadMore = () => setPage(page + 1);
+
+  return (
+    <>
+      {loading && <Loader />}
+
+      <ImageGallaryList>
+        {images.map(({ id, webformatURL, largeImageURL, tags }) => (
+          <GalleryItem key={id}>
+            <ImageGalleryItem
+              largeUrl={largeImageURL}
+              imgUrl={webformatURL}
+              alt={tags}
+            />
+          </GalleryItem>
+        ))}
+      </ImageGallaryList>
+
+      {images.length > 0 && images.length < totalImages && (
+        <Button onLoadMore={handleLoadMore} />
+      )}
+    </>
+  );
+};
 
 export default ImageGallery;

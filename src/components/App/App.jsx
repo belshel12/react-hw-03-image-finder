@@ -6,15 +6,12 @@ import { Toaster } from "react-hot-toast";
 
 const App = () => {
   const [query, setQuery] = useState("");
-  const handleSearchSubmit = (query) => {
-    setQuery(query);
-  };
 
   return (
     <AppWrap>
       <Toaster />
-      <Searchbar onSubmit={handleSearchSubmit} />
-      <ImageGallery queryText={query} />
+      <Searchbar onSubmit={setQuery} />
+      <ImageGallery query={query} />
     </AppWrap>
   );
 };
